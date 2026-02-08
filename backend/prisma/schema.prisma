@@ -1,0 +1,173 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Goal {
+  TRAVEL
+  JOB_INTERVIEW
+  IT
+  BUSINESS
+  DAILY_CONVERSATION
+  GAMING
+}
+
+enum ErrorType {
+  TENSE
+  PREPOSITION
+  WORD_ORDER
+  ARTICLE
+  SPELLING
+  OTHER
+}
+
+enum ConversationPersona {
+  BARISTA
+  RECRUITER
+  FOREIGN_FRIEND
+}
+
+enum ConversationMode {
+  TEXT
+  VOICE
+}
+
+enum ConversationRole {
+  USER
+  ASSISTANT
+}
+
+model User {
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+
+  currentGoal Goal?
+  currentDay  Int      @default(1)
+  streak      Int      @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  lessons       UserLesson[]
+  errorLogs     ErrorLog[]
+  refreshTokens RefreshToken[]
+  challengeAttempts ChallengeAttempt[]
+  conversationSessions ConversationSession[]
+}
+
+model LessonTemplate {
+  id            String   @id @default(uuid())
+  goal          Goal
+  dayNumber     Int
+  title         String
+  microObjective String
+  vocabulary    String[]
+  prompt        String
+  createdAt     DateTime @default(now())
+
+  userLessons UserLesson[]
+
+  @@unique([goal, dayNumber])
+  @@index([goal, dayNumber])
+}
+
+model UserLesson {
+  id               String   @id @default(uuid())
+  userId           String
+  lessonTemplateId String
+  dayNumber        Int
+  userAnswer       String
+  score            Float
+  completedAt      DateTime @default(now())
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lessonTemplate LessonTemplate @relation(fields: [lessonTemplateId], references: [id], onDelete: Restrict)
+  errorLogs     ErrorLog[]
+
+  @@index([userId, dayNumber])
+  @@index([lessonTemplateId])
+}
+
+model ErrorLog {
+  id            String    @id @default(uuid())
+  userId        String
+  lessonId      String?
+  errorType     ErrorType
+  message       String
+  wrongExample  String
+  correctExample String
+  createdAt     DateTime  @default(now())
+
+  user   User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson UserLesson? @relation(fields: [lessonId], references: [id], onDelete: SetNull)
+
+  @@index([userId, errorType])
+  @@index([lessonId])
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String
+  tokenHash String
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([tokenHash])
+}
+
+model ChallengeAttempt {
+  id           String   @id @default(uuid())
+  userId       String
+  challengeId  String
+  goal         Goal
+  dayNumber    Int
+  selectedIndex Int
+  correctIndex Int
+  isCorrect    Boolean
+  points       Int
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, challengeId])
+  @@index([userId, createdAt])
+}
+
+model ConversationSession {
+  id        String              @id @default(uuid())
+  userId    String
+  persona   ConversationPersona
+  mode      ConversationMode
+  goal      Goal
+  endedAt   DateTime?
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+
+  user     User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages ConversationMessage[]
+
+  @@index([userId, createdAt])
+}
+
+model ConversationMessage {
+  id        String           @id @default(uuid())
+  sessionId String
+  role      ConversationRole
+  content   String
+  createdAt DateTime         @default(now())
+
+  session ConversationSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, createdAt])
+}

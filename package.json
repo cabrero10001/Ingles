@@ -1,0 +1,14 @@
+{
+  "name": "linguapath-workspace",
+  "private": true,
+  "version": "0.0.1",
+  "scripts": {
+    "dev:client": "npm --prefix client run dev",
+    "dev:backend": "npm --prefix backend run dev",
+    "build:client": "npm --prefix client run build",
+    "build:backend": "npm --prefix backend run build",
+    "prisma:generate": "npm --prefix backend run prisma:generate",
+    "prisma:migrate": "npm --prefix backend run prisma:migrate",
+    "prisma:seed": "npm --prefix backend run prisma:seed"
+  }
+}
