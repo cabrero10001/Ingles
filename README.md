@@ -150,3 +150,37 @@ npm --prefix client run dev
 - Si frontend no conecta al backend:
   - Verifica `VITE_API_BASE_URL` en `client/.env`
   - Verifica que backend este corriendo en puerto `4000`
+
+## Deploy en Railway
+
+Recomendado: 2 servicios separados en el mismo repo (backend + client).
+
+### 1) Backend Service
+
+- En Railway crea un servicio desde este repo.
+- En **Root Directory** selecciona `backend`.
+- Railway usara `backend/railway.json`:
+  - Build: `npm install && npm run build`
+  - Start: `npm run start:railway`
+- Agrega variables de entorno del backend:
+  - `DATABASE_URL` (usa Postgres de Railway)
+  - `JWT_ACCESS_SECRET`
+  - `JWT_REFRESH_SECRET`
+  - `CORS_ORIGINS` (pon el dominio del frontend Railway)
+  - opcionales IA: `AI_ANALYZER_ENABLED`, `OPENAI_API_KEY`, `OPENAI_MODEL`
+
+### 2) Client Service
+
+- Crea otro servicio desde el mismo repo.
+- En **Root Directory** selecciona `client`.
+- Railway usara `client/railway.json`:
+  - Build: `npm install && npm run build`
+  - Start: `npm run start`
+- Variables frontend:
+  - `VITE_API_BASE_URL=https://<tu-backend>.up.railway.app/api`
+
+### 3) Post deploy checklist
+
+- Verifica backend health: `https://<tu-backend>.up.railway.app/api/health`
+- Verifica login/register desde frontend.
+- Si CORS falla, revisa `CORS_ORIGINS` (separa multiples dominios por coma).
