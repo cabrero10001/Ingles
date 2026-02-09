@@ -34,17 +34,13 @@ const userData = {
 };
 
 const todayLesson = {
-  title: 'Variables and Data Types',
+  title: 'Lección personalizada',
   description: 'Lección personalizada para tu objetivo',
   duration: '15 min',
-  microGoal: 'Dominar 10 términos técnicos en inglés',
+  microGoal: 'Objetivo diario adaptado a tu progreso',
 };
 
-const commonErrors = [
-  { type: 'Preposiciones', count: 8 },
-  { type: 'Tiempos verbales', count: 5 },
-  { type: 'Artículos', count: 3 },
-];
+const commonErrors: Array<{ type: string; count: number }> = [];
 
 export function Dashboard() {
   const navigate = useNavigate();
@@ -187,11 +183,6 @@ export function Dashboard() {
     (async () => {
       try {
         const meRes = await api.get<{ user: { name: string; currentDay: number; streak: number; currentGoal: string | null } }>('/me');
-        const lessonRes = await api.get<{ lesson: { title: string; microObjective: string } }>('/lessons/today');
-        const errorsRes = await api.get<{ errors: Array<{ errorType: string; count: number }> }>('/errors/top');
-        const challengeStatsRes = await api.get<{
-          stats: { totalPoints: number; correctCount: number; answeredCount: number };
-        }>('/challenges/stats');
 
         const goalMap: Record<string, string> = {
           TRAVEL: 'Viajar',
@@ -210,32 +201,45 @@ export function Dashboard() {
           streak: meRes.user.streak,
           goal: meRes.user.currentGoal ? (goalMap[meRes.user.currentGoal] ?? meRes.user.currentGoal) : 'Sin objetivo',
         }));
-        setToday((prev) => ({
-          ...prev,
-          title: lessonRes.lesson.title,
-          description: lessonDescriptionByGoal,
-          microGoal: lessonRes.lesson.microObjective,
-        }));
-        setTopErrors(
-          errorsRes.errors.map((e) => ({
-            type:
-              e.errorType === 'PREPOSITION'
-                ? 'Preposiciones'
-                : e.errorType === 'TENSE'
-                  ? 'Tiempos verbales'
-                  : e.errorType === 'ARTICLE'
-                    ? 'Artículos'
-                    : e.errorType === 'WORD_ORDER'
-                      ? 'Orden de oración'
-                      : e.errorType === 'SPELLING'
-                        ? 'Ortografía'
-                        : 'Otros',
-            count: e.count,
-          })),
-        );
-        setChallengeStats(challengeStatsRes.stats);
+        setToday((prev) => ({ ...prev, description: lessonDescriptionByGoal }));
+
+        const [errorsRes, challengeStatsRes] = await Promise.allSettled([
+          api.get<{ errors: Array<{ errorType: string; count: number }> }>('/errors/top'),
+          api.get<{ stats: { totalPoints: number; correctCount: number; answeredCount: number } }>('/challenges/stats'),
+        ]);
+
+        if (cancelled) return;
+
+        if (errorsRes.status === 'fulfilled') {
+          setTopErrors(
+            errorsRes.value.errors.map((e) => ({
+              type:
+                e.errorType === 'PREPOSITION'
+                  ? 'Preposiciones'
+                  : e.errorType === 'TENSE'
+                    ? 'Tiempos verbales'
+                    : e.errorType === 'ARTICLE'
+                      ? 'Artículos'
+                      : e.errorType === 'WORD_ORDER'
+                        ? 'Orden de oración'
+                        : e.errorType === 'SPELLING'
+                          ? 'Ortografía'
+                          : 'Otros',
+              count: e.count,
+            })),
+          );
+        } else {
+          setTopErrors([]);
+        }
+
+        if (challengeStatsRes.status === 'fulfilled') {
+          setChallengeStats(challengeStatsRes.value.stats);
+        } else {
+          setChallengeStats({ totalPoints: 0, correctCount: 0, answeredCount: 0 });
+        }
       } catch {
-        // Keep mock UI if API is not ready.
+        setTopErrors([]);
+        setChallengeStats({ totalPoints: 0, correctCount: 0, answeredCount: 0 });
       }
     })();
     return () => {
