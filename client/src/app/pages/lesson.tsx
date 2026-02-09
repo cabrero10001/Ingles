@@ -6,6 +6,7 @@ import { Badge } from '../components/ui/badge';
 import { Textarea } from '../components/ui/textarea';
 import { ArrowLeft, CheckCircle2, AlertCircle } from 'lucide-react';
 import { api } from '../services/api';
+import { toast } from 'sonner';
 
 const lessonData = {
   title: 'Variables and Data Types',
@@ -43,6 +44,7 @@ export function Lesson() {
   const [feedback, setFeedback] = useState<'correct' | 'needs-improvement' | null>(null);
   const [tips, setTips] = useState<string[]>([]);
   const [conversationAnswer, setConversationAnswer] = useState('');
+  const [apiUnavailable, setApiUnavailable] = useState(false);
 
   const wordCount = answer.trim().split(/\s+/).filter(word => word.length > 0).length;
   const conversationWordCount = conversationAnswer.trim().split(/\s+/).filter(word => word.length > 0).length;
@@ -81,6 +83,7 @@ export function Lesson() {
         });
       } catch {
         // Keep mock UI if API is not ready.
+        setApiUnavailable(true);
       }
     })();
     return () => {
@@ -104,8 +107,12 @@ export function Lesson() {
       });
       setTips(out.detectedErrors.map((e) => e.message));
       setFeedback(out.score >= 85 ? 'correct' : 'needs-improvement');
+      setApiUnavailable(false);
     } catch {
-      setFeedback('needs-improvement');
+      setSubmitted(false);
+      setFeedback(null);
+      setApiUnavailable(true);
+      toast.error('No se pudo evaluar la leccion. Intenta de nuevo en unos segundos.');
     }
   };
 
@@ -290,6 +297,14 @@ export function Lesson() {
             <Button onClick={handleContinue} className="w-full bg-[#10B981] hover:bg-[#059669] text-white">
               Continuar
             </Button>
+          </Card>
+        )}
+
+        {apiUnavailable && (
+          <Card className="p-4 mb-6 bg-[#FEF2F2] border-[#FECACA]">
+            <p className="text-sm text-[#991B1B]">
+              El servidor no devolvio la evaluacion de esta leccion. Es probable que el backend desplegado no tenga habilitadas las rutas `/api/lessons/today` y `/api/lessons/complete`.
+            </p>
           </Card>
         )}
       </main>
