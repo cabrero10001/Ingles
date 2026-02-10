@@ -6,6 +6,7 @@ import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
 import { Input } from '../components/ui/input';
+import { toast } from 'sonner';
 
 type Persona = {
   key: 'BARISTA' | 'RECRUITER' | 'FOREIGN_FRIEND';
@@ -31,6 +32,13 @@ export function AIConversation() {
   const [feedbackHints, setFeedbackHints] = useState<string[]>([]);
   const recognitionRef = useRef<any>(null);
   const [listening, setListening] = useState(false);
+  const [voiceSupported, setVoiceSupported] = useState(true);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const Ctor = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    setVoiceSupported(!!Ctor && window.isSecureContext);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -96,7 +104,10 @@ export function AIConversation() {
   const startVoiceInput = () => {
     if (typeof window === 'undefined') return;
     const Ctor = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!Ctor) return;
+    if (!Ctor || !window.isSecureContext) {
+      toast.error('Tu navegador no soporta reconocimiento de voz en esta pagina.');
+      return;
+    }
     if (!recognitionRef.current) {
       recognitionRef.current = new Ctor();
       recognitionRef.current.lang = 'en-US';
@@ -107,9 +118,26 @@ export function AIConversation() {
         setInput((prev) => (prev ? `${prev} ${transcript}` : transcript));
       };
       recognitionRef.current.onend = () => setListening(false);
+      recognitionRef.current.onerror = (event: { error?: string }) => {
+        setListening(false);
+        if (event?.error === 'not-allowed' || event?.error === 'service-not-allowed') {
+          toast.error('Permiso de microfono bloqueado. Habilitalo en el navegador para usar modo voz.');
+          return;
+        }
+        if (event?.error === 'no-speech') {
+          toast.error('No se detecto voz. Intenta hablar mas cerca del microfono.');
+          return;
+        }
+        toast.error('No se pudo iniciar el reconocimiento de voz.');
+      };
     }
     setListening(true);
-    recognitionRef.current.start();
+    try {
+      recognitionRef.current.start();
+    } catch {
+      setListening(false);
+      toast.error('No se pudo iniciar el microfono en este momento.');
+    }
   };
 
   const stopVoiceInput = () => {
@@ -200,7 +228,7 @@ export function AIConversation() {
             />
 
             {mode === 'VOICE' && (
-              <Button variant="outline" onClick={listening ? stopVoiceInput : startVoiceInput} disabled={!sessionId}>
+              <Button variant="outline" onClick={listening ? stopVoiceInput : startVoiceInput} disabled={!sessionId || !voiceSupported}>
                 {listening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
               </Button>
             )}
@@ -213,7 +241,9 @@ export function AIConversation() {
           {mode === 'VOICE' && (
             <div className="mt-2 flex items-center gap-2 text-xs text-[#6B7280]">
               <Volume2 className="w-4 h-4" />
-              La respuesta del personaje se lee en voz alta automaticamente.
+              {voiceSupported
+                ? 'La respuesta del personaje se lee en voz alta automaticamente.'
+                : 'Tu navegador no soporta modo voz aqui. Usa modo texto o habilita permisos/micrófono.'}
             </div>
           )}
         </Card>
