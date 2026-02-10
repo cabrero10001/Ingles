@@ -105,8 +105,22 @@ export function Lesson() {
       }>('/lessons/complete', {
         userAnswer: lesson.activityType === 'CONVERSATION' ? conversationAnswer : answer,
       });
-      setTips(out.detectedErrors.map((e) => e.message));
-      setFeedback(out.score >= 85 ? 'correct' : 'needs-improvement');
+
+      const detectedErrors = Array.isArray((out as any).detectedErrors)
+        ? (out as any).detectedErrors
+        : [];
+      const score = typeof (out as any).score === 'number'
+        ? (out as any).score
+        : typeof (out as any).lesson?.score === 'number'
+          ? (out as any).lesson.score
+          : null;
+
+      setTips(detectedErrors.map((e: { message: string }) => e.message));
+      if (detectedErrors.length === 0) {
+        setFeedback('correct');
+      } else {
+        setFeedback(score !== null && score >= 85 ? 'correct' : 'needs-improvement');
+      }
       setApiUnavailable(false);
     } catch {
       setSubmitted(false);
