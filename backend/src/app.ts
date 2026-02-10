@@ -16,6 +16,10 @@ import { aiConversationRoutes } from './routes/aiConversationRoutes.js';
 export function createApp() {
   const app = express();
 
+  // Behind Render/Vercel proxies, this prevents incorrect IP handling
+  // and avoids express-rate-limit proxy validation errors.
+  app.set('trust proxy', 1);
+
   app.use(helmet());
   app.use(apiRateLimit);
   app.use(express.json({ limit: '1mb' }));
